@@ -258,12 +258,38 @@ h4 {
     border-left: 2px solid var(--text-secondary);
     animation: slideInLeft 0.5s ease-out;
     font-size: 0.95rem;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.ticker-item.interactable {
+    cursor: pointer;
+}
+
+.ticker-item.interactable:hover {
+    background: rgba(212, 175, 55, 0.1);
+    transform: translateX(5px);
+}
+
+.ticker-item.selected {
+    background: rgba(212, 175, 55, 0.15);
+    border-left: 4px solid var(--royal-gold);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.1);
 }
 
 .rtl .ticker-item {
     border-left: none;
     border-right: 2px solid var(--text-secondary);
     animation: slideInRight 0.5s ease-out;
+}
+
+.rtl .ticker-item.interactable:hover {
+    transform: translateX(-5px);
+}
+
+.rtl .ticker-item.selected {
+    border-right: 4px solid var(--royal-gold);
+    border-left: none;
 }
 
 .ticker-item.breaking {

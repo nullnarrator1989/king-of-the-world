@@ -39,7 +39,7 @@ Whenever you (or I) make changes to the code:
 2.  **Run these 3 commands** in the terminal:
     ```bash
     git add .
-    git commit -m "Enhanced with Real-time News Cycle & Expanded Ghost Protocol"
+    git commit -m "Interactive News: Click-to-Decree Logic"
     git push origin main
     ```
 

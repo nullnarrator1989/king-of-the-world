@@ -6,25 +6,27 @@ const DICTIONARY = {
         title: "The King Has Spoken",
         subtitle: "Opinions of the Absolute Sovereign on Worldly Matters",
         situationTitle: "The Royal Situation Room",
-        eventsTitle: "Global Events (Live)",
-        aiTitle: "His Majesty's Take (AI Processed)",
+        eventsTitle: "Global Events (Select to Analyze)",
+        aiTitle: "His Majesty's Decree", // Removed (AI Processed)
         decreesTitle: "Latest Decrees",
         ghostsTitle: "The Council of Ghosts",
         toggleBtn: "عربي",
         scanning: "Scanning global frequencies...",
-        subjects: "Subjects Witnessed"
+        subjects: "Subjects Witnessed",
+        clickPrompt: "Select a news item to hear the Royal Opinion..."
     },
     ar: {
         title: "الملك قد نطق",
         subtitle: "آراء الحاكم المطلق في شؤون العالم",
         situationTitle: "غرفة العمليات الملكية",
-        eventsTitle: "أحداث عالمية (مباشر)",
-        aiTitle: "رأي جلالته (معالجة ذكية)",
+        eventsTitle: "أحداث عالمية (اضغط للتحليل)",
+        aiTitle: "مرسوم جلالته", // Removed (AI Processed)
         decreesTitle: "أحدث المراسيم",
         ghostsTitle: "مجلس الأشباح",
         toggleBtn: "English",
         scanning: "جاري مسح الترددات العالمية...",
-        subjects: "الرعايا الذين شهدوا هذا"
+        subjects: "الرعايا الذين شهدوا هذا",
+        clickPrompt: "اضغط على خبر لسماع الرأي الملكي..."
     }
 };
 
@@ -49,6 +51,7 @@ function setupLanguageToggle() {
     btn.addEventListener('click', () => {
         currentLang = currentLang === 'en' ? 'ar' : 'en';
         updateLanguageUI();
+        // Re-render feed to apply translation to static parts of news items if any
         startRoyalNewsFeed();
     });
 }
@@ -130,7 +133,6 @@ let rotationInterval;
 function startCouncilRotation() {
     if (rotationInterval) clearInterval(rotationInterval);
 
-    // FASTER: Rotate random ghost every 5 seconds
     rotationInterval = setInterval(() => {
         if (activeCouncilData.length === 0) return;
 
@@ -151,19 +153,19 @@ function startCouncilRotation() {
 }
 
 
-// --- News & AI ---
+// --- News & Interaction ---
 let newsInterval;
-let aiCycleInterval;
 let currentNewsItems = [];
+let selectedNewsIndex = -1; // Track selected item
 
 async function startRoyalNewsFeed() {
     const ticker = document.getElementById('live-ticker');
 
     if (newsInterval) clearInterval(newsInterval);
-    if (aiCycleInterval) clearInterval(aiCycleInterval);
 
     const loadingText = DICTIONARY[currentLang].scanning;
-    ticker.innerHTML = `<div class="ticker-item">${loadingText}</div>`;
+    // Don't wipe if we are just refreshing logic, only if empty
+    if (ticker.children.length === 0) ticker.innerHTML = `<div class="ticker-item">${loadingText}</div>`;
 
     async function fetchNews() {
         try {
@@ -174,28 +176,42 @@ async function startRoyalNewsFeed() {
 
             currentNewsItems = newsItems;
 
-            // Update Ticker
+            // Re-render list
             ticker.innerHTML = '';
             newsItems.forEach((item, index) => {
                 const tickerItem = document.createElement('div');
-                tickerItem.className = 'ticker-item';
-                tickerItem.style.animationDelay = `${index * 0.2}s`;
+                tickerItem.className = 'ticker-item interactable'; // Add interactable class
+                if (index === selectedNewsIndex) tickerItem.classList.add('selected');
+
+                tickerItem.style.animationDelay = `${index * 0.1}s`;
 
                 tickerItem.innerHTML = `
                     <span class="ticker-timestamp">${new Date(item.timestamp).toLocaleTimeString()} (${item.source})</span>
                     <strong>${item.title}</strong>
                 `;
+
+                // CLICK EVENT
+                tickerItem.addEventListener('click', () => {
+                    selectNewsItem(index);
+                });
+
                 ticker.appendChild(tickerItem);
             });
 
-            // Setup Initial Data
+            // Update Council Data
             if (newsItems.length > 0) {
                 if (newsItems[0].councilData) {
                     activeCouncilData = newsItems[0].councilData;
-                    renderCouncilInitial(activeCouncilData);
+                    // Initial render of council if needed
+                    const container = document.getElementById('council-container');
+                    if (container.children.length <= 1) renderCouncilInitial(activeCouncilData);
                 }
-                // Start Cycle
-                startKingNewsCycle();
+            }
+
+            // Prompt user if nothing selected
+            if (selectedNewsIndex === -1) {
+                const aiBox = document.getElementById('ai-response-box');
+                aiBox.innerHTML = `<span style="color:var(--text-secondary); opacity: 0.7;">${DICTIONARY[currentLang].clickPrompt}</span>`;
             }
 
         } catch (error) {
@@ -205,25 +221,19 @@ async function startRoyalNewsFeed() {
     }
 
     await fetchNews();
-    newsInterval = setInterval(fetchNews, 60000);
+    newsInterval = setInterval(fetchNews, 60000); // Fetch new headlines every minute
 }
 
-function startKingNewsCycle() {
-    if (aiCycleInterval) clearInterval(aiCycleInterval);
+function selectNewsItem(index) {
+    selectedNewsIndex = index;
+    const newsItem = currentNewsItems[index];
 
-    let cycleIndex = 0;
+    // UI Update
+    const items = document.querySelectorAll('.ticker-item');
+    items.forEach(i => i.classList.remove('selected'));
+    if (items[index]) items[index].classList.add('selected');
 
-    // Show first immediately
-    if (currentNewsItems[cycleIndex]) updateRoyalAI(currentNewsItems[cycleIndex]);
-
-    // Cycle every 12 seconds to "monitor" the feed
-    aiCycleInterval = setInterval(() => {
-        cycleIndex++;
-        if (cycleIndex >= currentNewsItems.length) cycleIndex = 0;
-        if (currentNewsItems[cycleIndex]) {
-            updateRoyalAI(currentNewsItems[cycleIndex]);
-        }
-    }, 12000);
+    updateRoyalAI(newsItem);
 }
 
 function updateRoyalAI(newsItem) {
@@ -233,47 +243,40 @@ function updateRoyalAI(newsItem) {
     // Clear quickly
     aiBox.innerHTML = '';
 
-    // Formatting Header
-    const topic = newsItem.title.length > 50 ? newsItem.title.substring(0, 50) + '...' : newsItem.title;
-    const analyzingText = currentLang === 'ar' ? "تحليل الموضوع" : "Analyzing";
+    const topic = newsItem.title.length > 60 ? newsItem.title.substring(0, 60) + '...' : newsItem.title;
 
-    // Step 1: Show "Analyzing" state
-    aiBox.innerHTML = `<span style="color:var(--royal-gold); animation: blink 0.5s infinite;">[${analyzingText}: "${topic}"]</span>`;
+    // Make text specific by quoting the headline
+    const specificHeader = currentLang === 'ar'
+        ? `بخصوص: "${topic}"`
+        : `Regarding: "${topic}"`;
 
-    // Step 2: After 1s, show typewritten response
-    setTimeout(() => {
-        aiBox.innerHTML = ''; // Clear "Analyzing"
-        aiBox.innerHTML = `<span style="color:var(--text-secondary); font-size: 0.8em; margin-bottom: 5px; display:block;">RE: ${topic}</span>`;
+    // Typewriter effect
+    aiBox.innerHTML = `<div style="margin-bottom: 1rem; color: #888; font-size: 0.9rem;">${specificHeader}</div>`;
 
-        let i = 0;
-        const typingSpeed = 30;
+    let i = 0;
+    const typingSpeed = 25;
 
-        function typeWriter() {
-            if (i < response.length) {
-                // Determine current text + cursor
-                const currentText = response.substring(0, i + 1);
-                // We append to existing header
-                const headerHTML = `<span style="color:var(--text-secondary); font-size: 0.8em; margin-bottom: 5px; display:block;">RE: ${topic}</span>`;
-                aiBox.innerHTML = headerHTML + currentText + '<span id="ai-cursor" class="cursor">|</span>';
-                i++;
-                setTimeout(typeWriter, typingSpeed);
-            }
+    function typeWriter() {
+        if (i < response.length) {
+            const currentText = response.substring(0, i + 1);
+            // Re-construct content
+            aiBox.innerHTML = `<div style="margin-bottom: 1rem; color: #888; font-size: 0.9rem;">${specificHeader}</div>`
+                + `<span style="color: var(--royal-gold); font-size: 1.1em;">${currentText}</span>`
+                + '<span id="ai-cursor" class="cursor">|</span>';
+            i++;
+            setTimeout(typeWriter, typingSpeed);
         }
-        typeWriter();
-    }, 1000);
+    }
+    typeWriter();
 }
 
 function renderCouncilInitial(ghosts) {
-    // Only render if container is empty or we fetched fresh data structure
     const container = document.getElementById('council-container');
-    if (container.children.length > 1) return; // Already rendered, don't wipe to avoid jumpiness
-
     container.innerHTML = '';
 
     ghosts.forEach((ghost, index) => {
         const card = document.createElement('div');
         card.className = 'ghost-card';
-        // Pick initial random advice
         const initialAdvice = ghost.all_advice[Math.floor(Math.random() * ghost.all_advice.length)];
 
         card.innerHTML = `
