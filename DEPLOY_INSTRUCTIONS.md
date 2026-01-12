@@ -39,7 +39,7 @@ Whenever you (or I) make changes to the code:
 2.  **Run these 3 commands** in the terminal:
     ```bash
     git add .
-    git commit -m "Analytics Engine: Vox Populi Synthesis"
+    git commit -m "Insight Engine: Authentic Wisdom & Smart Extraction"
     git push origin main
     ```
 
