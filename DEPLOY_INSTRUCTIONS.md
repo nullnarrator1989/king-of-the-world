@@ -10,18 +10,40 @@ I have already **initialized the Git repository** and **saved all your code**.
 3.  **Public/Private**: Public is easier for free hosting.
 4.  **Click "Create repository"**.
 
-## Step 2: Push Your Code (Run these commands)
-Copy and paste these 3 lines into the terminal below (one by one):
+## Step 2: Push Your Code
+I have already configured the "remote" address for you locally. You likely just need to force the upload now.
+
+Run this single command in the terminal:
 
 ```bash
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/king-of-the-world.git
-git push -u origin main
+git push -u origin main --force
 ```
-*(Replace `YOUR_USERNAME` with your actual GitHub username)*
+
+If it says **"Authentication failed"**, you need to sign in. 
+- The terminal might ask for a "Personal Access Token". 
+- An easier way is to use the [GitHub Desktop app](https://desktop.github.com/) -> Drag and drop this folder into it -> Click "Publish".
 
 ## Step 3: Launch on Render
 1.  Go to [dashboard.render.com](https://dashboard.render.com/).
+2.  Click **New +** -> **Web Service**.
+3.  Connect your repository (`king-of-the-world`).
+4.  Click **Create Web Service**.
+
+---
+
+## 🔄 How to Update Your Website
+Good news: You never have to touch Render again. It is "Continuous Deployment".
+
+Whenever you (or I) make changes to the code:
+1.  **Edit** the files on your computer.
+2.  **Run these 3 commands** in the terminal:
+    ```bash
+    git add .
+    git commit -m "Enhanced with Real-time News Cycle & Expanded Ghost Protocol"
+    git push origin main
+    ```
+
+**Render will see the change on GitHub and automatically update your live site in ~1 minute.**
 2.  Click **New +** -> **Web Service**.
 3.  Scroll to "Public Git Repository" (or connect your GitHub account).
 4.  Paste your new GitHub URL.

@@ -124,45 +124,43 @@ async function initVisitorCounter() {
 }
 
 // --- Live Council State ---
-let activeCouncilData = []; // Stores the personas and their full advice bank
+let activeCouncilData = [];
 let rotationInterval;
 
 function startCouncilRotation() {
     if (rotationInterval) clearInterval(rotationInterval);
 
-    // Rotate one ghost's advice randomy every 8 seconds
+    // FASTER: Rotate random ghost every 5 seconds
     rotationInterval = setInterval(() => {
         if (activeCouncilData.length === 0) return;
 
-        // Pick random ghost index
         const ghostIndex = Math.floor(Math.random() * activeCouncilData.length);
         const ghost = activeCouncilData[ghostIndex];
-
-        // Pick new random advice
         const newAdvice = ghost.all_advice[Math.floor(Math.random() * ghost.all_advice.length)];
 
-        // Update DOM
         const ghostCards = document.querySelectorAll('.ghost-card');
         if (ghostCards[ghostIndex]) {
             const adviceEl = ghostCards[ghostIndex].querySelector('.ghost-advice');
-            // Fade out
             adviceEl.style.opacity = '0';
             setTimeout(() => {
                 adviceEl.textContent = `"${newAdvice}"`;
                 adviceEl.style.opacity = '1';
             }, 500);
         }
-    }, 8000); // 8 second updates
+    }, 5000);
 }
 
 
 // --- News & AI ---
 let newsInterval;
+let aiCycleInterval;
+let currentNewsItems = [];
 
 async function startRoyalNewsFeed() {
     const ticker = document.getElementById('live-ticker');
 
     if (newsInterval) clearInterval(newsInterval);
+    if (aiCycleInterval) clearInterval(aiCycleInterval);
 
     const loadingText = DICTIONARY[currentLang].scanning;
     ticker.innerHTML = `<div class="ticker-item">${loadingText}</div>`;
@@ -174,8 +172,10 @@ async function startRoyalNewsFeed() {
 
             if (!newsItems || newsItems.length === 0) return;
 
-            ticker.innerHTML = '';
+            currentNewsItems = newsItems;
 
+            // Update Ticker
+            ticker.innerHTML = '';
             newsItems.forEach((item, index) => {
                 const tickerItem = document.createElement('div');
                 tickerItem.className = 'ticker-item';
@@ -188,15 +188,14 @@ async function startRoyalNewsFeed() {
                 ticker.appendChild(tickerItem);
             });
 
+            // Setup Initial Data
             if (newsItems.length > 0) {
-                const mainStory = newsItems[0];
-                updateRoyalAI(mainStory);
-
-                // Store council data and render initial state
-                if (mainStory.councilData) {
-                    activeCouncilData = mainStory.councilData;
+                if (newsItems[0].councilData) {
+                    activeCouncilData = newsItems[0].councilData;
                     renderCouncilInitial(activeCouncilData);
                 }
+                // Start Cycle
+                startKingNewsCycle();
             }
 
         } catch (error) {
@@ -209,35 +208,66 @@ async function startRoyalNewsFeed() {
     newsInterval = setInterval(fetchNews, 60000);
 }
 
+function startKingNewsCycle() {
+    if (aiCycleInterval) clearInterval(aiCycleInterval);
+
+    let cycleIndex = 0;
+
+    // Show first immediately
+    if (currentNewsItems[cycleIndex]) updateRoyalAI(currentNewsItems[cycleIndex]);
+
+    // Cycle every 12 seconds to "monitor" the feed
+    aiCycleInterval = setInterval(() => {
+        cycleIndex++;
+        if (cycleIndex >= currentNewsItems.length) cycleIndex = 0;
+        if (currentNewsItems[cycleIndex]) {
+            updateRoyalAI(currentNewsItems[cycleIndex]);
+        }
+    }, 12000);
+}
+
 function updateRoyalAI(newsItem) {
     const aiBox = document.getElementById('ai-response-box');
     const response = newsItem.royalComment || "...";
 
-    let i = 0;
-    const typingSpeed = 30;
+    // Clear quickly
+    aiBox.innerHTML = '';
 
-    function typeWriter() {
-        if (i < response.length) {
-            aiBox.innerHTML = response.substring(0, i + 1) + '<span id="ai-cursor" class="cursor">|</span>';
-            i++;
-            setTimeout(typeWriter, typingSpeed);
-        }
-    }
-
-    const topic = newsItem.title.length > 40 ? newsItem.title.substring(0, 40) + '...' : newsItem.title;
+    // Formatting Header
+    const topic = newsItem.title.length > 50 ? newsItem.title.substring(0, 50) + '...' : newsItem.title;
     const analyzingText = currentLang === 'ar' ? "تحليل الموضوع" : "Analyzing";
-    // const scoreText = currentLang === 'ar' ? "رأي الغالبية" : "Majority Opinion"; // Hide score for cleaner look
 
-    aiBox.innerHTML = `<span style="color:var(--royal-gold)">[${analyzingText}: "${topic}"]</span><br><br><span class="cursor">|</span>`;
+    // Step 1: Show "Analyzing" state
+    aiBox.innerHTML = `<span style="color:var(--royal-gold); animation: blink 0.5s infinite;">[${analyzingText}: "${topic}"]</span>`;
 
+    // Step 2: After 1s, show typewritten response
     setTimeout(() => {
-        aiBox.innerHTML = '';
+        aiBox.innerHTML = ''; // Clear "Analyzing"
+        aiBox.innerHTML = `<span style="color:var(--text-secondary); font-size: 0.8em; margin-bottom: 5px; display:block;">RE: ${topic}</span>`;
+
+        let i = 0;
+        const typingSpeed = 30;
+
+        function typeWriter() {
+            if (i < response.length) {
+                // Determine current text + cursor
+                const currentText = response.substring(0, i + 1);
+                // We append to existing header
+                const headerHTML = `<span style="color:var(--text-secondary); font-size: 0.8em; margin-bottom: 5px; display:block;">RE: ${topic}</span>`;
+                aiBox.innerHTML = headerHTML + currentText + '<span id="ai-cursor" class="cursor">|</span>';
+                i++;
+                setTimeout(typeWriter, typingSpeed);
+            }
+        }
         typeWriter();
     }, 1000);
 }
 
 function renderCouncilInitial(ghosts) {
+    // Only render if container is empty or we fetched fresh data structure
     const container = document.getElementById('council-container');
+    if (container.children.length > 1) return; // Already rendered, don't wipe to avoid jumpiness
+
     container.innerHTML = '';
 
     ghosts.forEach((ghost, index) => {
