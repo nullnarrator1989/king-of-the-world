@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The King Has Spoken</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400&family=Amiri:wght@400;700&family=Cairo:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <button id="lang-toggle" class="lang-toggle">عربي</button>
+
+    <header class="hero">
+        <h1>The King Has Spoken</h1>
+        <p>Opinions of the Absolute Sovereign on Worldly Matters</p>
+    </header>
+
+    <section id="royal-news-feed-section" class="news-section">
+        <h2 class="section-title">The Royal Situation Room</h2>
+        <div class="situation-room glass-panel">
+            <div class="news-feed-container">
+                <h3>Global Events (Live)</h3>
+                <div id="live-ticker" class="live-ticker">
+                    <!-- Dynamic Stream -->
+                    <div class="ticker-item placeholder">Scanning for worldly chaos...</div>
+                </div>
+            </div>
+            <div class="royal-ai-container">
+                <h3>His Majesty's Take (AI Processed)</h3>
+                <div id="ai-response-box" class="ai-response-box">
+                    <span id="ai-cursor" class="cursor">|</span>
+                </div>
+            </div>
+        </div>
+        <section id="spiritual-realm" class="spiritual-realm">
+            <div class="mist-layer"></div>
+            <h2 class="section-title ethereal-title">The Council of Ghosts</h2>
+            <div class="council-container" id="council-container">
+                <!-- Ghosts will be summoned here -->
+                <div class="ghost-placeholder">Summoning spirits...</div>
+            </div>
+        </section>
+
+        <main class="opinions-container">
+            <h2 class="section-title">Latest Decrees</h2>
+            <div id="decrees-grid" class="decrees-grid">
+                <!-- Populated by JS -->
+            </div>
+        </main>
+
+        <footer class="royal-footer">
+            <p>Est. 2026 • The Absolute Domain of His Majesty</p>
+            <div id="visitor-counter" class="visitor-counter">Subjects Witnessed: ...</div>
+        </footer>
+
+        <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "king-of-the-world-backend",
+  "version": "1.0.0",
+  "description": "Backend for The King Has Spoken",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "rss-parser": "^3.13.0",
+    "sentiment": "^5.0.2",
+    "cors": "^2.8.5"
+  }
+}
