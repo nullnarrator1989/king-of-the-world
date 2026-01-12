@@ -1,13 +1,11 @@
 const express = require('express');
 const Parser = require('rss-parser');
-const Sentiment = require('sentiment');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 const parser = new Parser();
-const sentiment = new Sentiment();
 const PORT = 3000;
 
 app.use(cors());
@@ -39,8 +37,7 @@ const FEEDS_EN = [
     'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
     'https://www.aljazeera.com/xml/rss/all.xml',
     'http://feeds.reuters.com/reuters/worldNews',
-    'http://rss.cnn.com/rss/edition_world.rss',
-    'https://feeds.skynews.com/feeds/rss/world.xml'
+    'http://rss.cnn.com/rss/edition_world.rss'
 ];
 
 const FEEDS_AR = [
@@ -50,132 +47,119 @@ const FEEDS_AR = [
     'https://www.skynewsarabia.com/rss'
 ];
 
-// --- LOGIC: Topic-Based Beneficial Solutions ---
+// --- ADVANCED DECREE ENGINE ---
 
-const TOPIC_KEYWORDS = {
-    ECONOMY: ['economy', 'market', 'stock', 'inflation', 'trade', 'debt', 'bank', 'crypto', 'money', 'financial', 'tax'],
-    CONFLICT: ['war', 'fight', 'attack', 'kill', 'military', 'soldier', 'peace', 'truce', 'blast', 'crisis', 'tension', 'nuclear'],
-    CLIMATE: ['climate', 'warming', 'heat', 'flood', 'storm', 'carbon', 'green', 'energy', 'oil', 'planet', 'nature'],
-    TECH: ['tech', 'ai', 'cyber', 'internet', 'robot', 'space', ' nasa', 'digital', 'data', 'app', 'science'],
-    POLITICS: ['election', 'vote', 'law', 'government', 'president', 'minister', 'court', 'rights', 'policy', 'protest']
+// These generators take the specific "Subject" found in the headline and weave it into the advice.
+const TEMPLATES_EN = {
+    // Specific Entities
+    'trump': (s) => `Donald Trump is a symptom, not the cause. The solution is not in one man, but in strengthening the institutions he challenges.`,
+    'biden': (s) => `Leadership requires more than presence; it requires vision. The challenge for the administration is to unite a fractured kingdom.`,
+    'china': (s) => `The Dragon rises not by chance, but by planning centuries ahead. We must learn from their patience while safeguarding our own liberty.`,
+    'russia': (s) => `Strength used for aggression is weakness in disguise. True power lies in economic stability, not territorial expansion.`,
+    'ukraine': (s) => `The resilience of Ukraine teaches us that the spirit of a people is stronger than steel. We must support their right to sovereignty.`,
+    'un': (s) => `The UN talks while the world burns. It needs less bureaucracy and more teeth to enforce peace.`,
+    'eu': (s) => `A union of nations is noble but fragile. They must remember that shared prosperity is the only glue that holds.`,
+    'nato': (s) => `Alliances are necessary, but dependence is dangerous. Every nation must contribute its fair share to the common shield.`,
+
+    // Topics / Keywords
+    'war': (s) => `War is the failure of imagination. Immediate ceasefire and dialogue are the only sane paths. History honors the peacemaker, not the conqueror.`,
+    'fight': (s) => `Violence breeds only more violence. The cycle must be broken by the side with the greater courage to forgive.`,
+    'military': (s) => `A strong military is a shield, not a sword. It should exist to deter conflict, never to provoke it.`,
+
+    'economy': (s) => `The economy is a garden, not a machine. You cannot force it to grow; you must water the roots (the workers) and prune the dead branches (corruption).`,
+    'inflation': (s) => `Inflation is the thief of the poor. To fight it, we must produce more value locally and stop printing empty promises.`,
+    'market': (s) => `The market is manic-depressive. Do not build your house on its shifting sands. Invest in land, education, and tangible goods.`,
+    'crypto': (s) => `Digital currency is fascinating, but can you eat it? Real wealth is resources, food, and energy. Proceed with caution.`,
+    'bank': (s) => `Banks must be servants of the people, not their masters. Excessive greed in the financial sector requires strict regulation.`,
+
+    'climate': (s) => `Nature is sending us a bill for centuries of debt. We must pay it by transitioning to green energy now, or face foreclosure.`,
+    'oil': (s) => `Oil is the blood of the past. The sun and wind are the fuel of the future. We must adapt or become fossils ourselves.`,
+    'energy': (s) => `Energy independence is national security. Every roof should capture the sun; every wind should turn a turbine.`,
+
+    'ai': (s) => `AI is a tool, like fire. It can cook our food or burn our house down. We need ethical guardrails immediately.`,
+    'tech': (s) => `Technology advances faster than wisdom. We must ensure that our digital tools connect us rather than divide us.`,
+    'space': (s) => `Looking to the stars is good, but we must not forget the earth under our feet. Fix the home signal before exploring the neighborhood.`,
+
+    'election': (s) => `An election is the voice of the soul of a nation. The winner must serve all, not just those who voted for them.`,
+    'protest': (s) => `A protest is a fever alerting us to an infection in the body politic. Leaders must listen to the symptoms, not suppress them.`,
+    'law': (s) => `The law must be a wall for the weak against the strong. If it serves only the rich, it is not law, but oppression.`,
+
+    // Catch-alls (Dynamic)
+    'crisis': (s) => `Every crisis carries the seed of opportunity. In this moment of difficulty, we must find the strength to reinvent ourselves.`,
+    'new': (s) => `Novelty is exciting, but is it progress? We must judge '${s}' not by its newness, but by its utility to humanity.`,
+    'dead': (s) => `We mourn the loss. It reminds us that life is fleeting, and we must make our own contributions meaningful while we can.`,
 };
 
-const ROYAL_SOLUTIONS_EN = {
-    ECONOMY: [
-        "Solution: We must invest in long-term infrastructure, not short-term speculation. Stability breeds prosperity.",
-        "Decree: Focus resources on education and local manufacturing. A self-reliant kingdom is a wealthy kingdom.",
-        "Advice: Diversify the national portfolio. Do not clear-cut the forest for a quick harvest; plant new seeds.",
-        "Solution: Reduce bureaucratic friction for small merchants. They are the lifeblood of the market.",
-        "Decree: Ensure fair wages. A populace that cannot afford bread cannot buy your widgets."
-    ],
-    CONFLICT: [
-        "Solution: Diplomacy is cheaper than ammunition. We must open channels for dialogue immediately.",
-        "Decree: Address the root cause—usually resource scarcity or disrespect. Send envoys, not armies.",
-        "Advice: True strength is shown in restraint. Mercy conquers where swords fail.",
-        "Solution: Establish a neutral zone and invite mediators. Pride must be swallowed to save lives.",
-        "Decree: Protect the innocent first. Leaders who hide behind civilians shall face Royal Justice."
-    ],
-    CLIMATE: [
-        "Solution: We have only one garden. We must transition to renewable energy with the speed of a galloping steed.",
-        "Decree: Reforestation is mandatory. For every tree cut, two shall be planted. Nature is our landlord.",
-        "Advice: Innovation is the key. Provide royal grants to those developing clean technologies.",
-        "Solution: Reduce waste. Use glass, not plastic. The oceans are not our dumpster.",
-        "Decree: Respect the seasons. Build with the environment, not against it."
-    ],
-    TECH: [
-        "Solution: Technology must serve humanity, not enslave it. Implement ethical guidelines for all algorithms.",
-        "Decree: Focus on digital literacy. Every subject should understand the tools they use.",
-        "Advice: Do not fear the machine, but master it. Use automation to free humans for creative pursuits.",
-        "Solution: Data privacy is a human right. Protect the digital borders of your citizens.",
-        "Decree: Invest in space exploration. Our destiny lies among the stars, but our feet must be grounded in ethics."
-    ],
-    POLITICS: [
-        "Solution: A leader eats last. Transparency in governance will restore trust.",
-        "Decree: Listen to the minority opinion. The majority is loud, but not always right.",
-        "Advice: Compromise is the art of leadership. A rigid tree breaks in the storm; a willow bends.",
-        "Solution: Empower local councils. Decisions should be made by those they affect.",
-        "Decree: Justice must be blind. The law applies to the Prince as it does to the Pauper."
-    ],
-    DEFAULT: [
-        "Solution: Patience and perspective. Do not react in haste; plan for the next century.",
-        "Decree: Unity is our strength. We must find common ground rather than focus on division.",
-        "Advice: Education and understanding are the cures for fear. Fund the libraries.",
-        "Solution: Kindness costs nothing but buys loyalty. Treat your neighbors with respect.",
-        "Decree: Focus on what you can control. Improve your own home, and the world improves with it."
-    ]
+const TEMPLATES_AR = {
+    // Specific Entities
+    'trump': (s) => `ترامب هو عَرَض وليس السبب. الحل ليس في رجل واحد، بل في تعزيز المؤسسات التي يتحداها.`,
+    'biden': (s) => `القيادة تتطلب أكثر من الحضور؛ تتطلب رؤية. التحدي أمام الإدارة هو توحيد مملكة ممزقة.`,
+    'china': (s) => `التنين لا ينهض بالصدفة، بل بالتخطيط لقرون قادمة. يجب أن نتعلم من صبرهم مع حماية حريتنا.`,
+    'russia': (s) => `القوة المستخدمة للعدوان هي ضعف مقنع. القوة الحقيقية تكمن في الاستقرار الاقتصادي، لا التوسع الإقليمي.`,
+    'ukraine': (s) => `صمود أوكرانيا يعلمنا أن روح الشعب أقوى من الفولاذ. يجب أن ندعم حقهم في السيادة.`,
+    'un': (s) => `الأمم المتحدة تتحدث بينما العالم يحترق. إنها بحاجة إلى بيروقراطية أقل وأنياب أكثر لفرض السلام.`,
+
+    // Topics
+    'war': (s) => `الحرب هي فشل للخيال. وقف إطلاق النار الفوري والحوار هما المساران الوحيدان للعقل. التاريخ يكرم صانع السلام، لا الفاتح.`,
+    'economy': (s) => `الاقتصاد حديقة وليس آلة. لا يمكنك إجباره على النمو؛ يجب أن تروي الجذور (العمال) وتقلم الفروع الميتة (الفساد).`,
+    'inflation': (s) => `التضخم هو لص الفقراء. لمحاربته، يجب أن ننتج قيمة أكبر محلياً ونتوقف عن طباعة الوعود الفارغة.`,
+    'market': (s) => `السوق متقلب المزاج. لا تبنِ منزلك على رماله المتحركة. استثمر في الأرض والتعليم والسلع الملموسة.`,
+    'climate': (s) => `الطبيعة ترسل لنا فاتورة لقرون من الديون. يجب أن ندفعها بالانتقال إلى الطاقة الخضراء الآن، أو مواجهة الإفلاس.`,
+    'oil': (s) => `النفط هو دم الماضي. الشمس والرياح هما وقود المستقبل. يجب أن نتكيف أو نصبح أحافير بأنفسنا.`,
+    'ai': (s) => `الذكاء الاصطناعي أداة، مثل النار. يمكنه طهي طعامنا أو حرق منزلنا. نحتاج إلى حواجز أخلاقية فوراً.`,
+    'tech': (s) => `تتقدم التكنولوجيا أسرع من الحكمة. يجب أن نضمن أن أدواتنا الرقمية تربطنا بدلاً من أن تفرقنا.`,
+    'election': (s) => `الانتخابات هي صوت روح الأمة. يجب على الفائز أن يخدم الجميع، وليس فقط من صوتوا له.`,
+    'protest': (s) => `الاحتجاج هو حمى تنبهنا إلى عدوى في الجسد السياسي. يجب على القادة الاستماع إلى الأعراض، لا قمعها.`,
+
+    // Catch-alls
+    'crisis': (s) => `كل أزمة تحمل بذرة فرصة. في لحظة الصعوبة هذه، يجب أن نجد القوة لإعادة اختراع أنفسنا.`,
+    'new': (s) => `الجديد مثير، لكن هل هو تقدم؟ يجب أن نحكم على '${s}' ليس بجدته، ولكن بفائدته للبشرية.`
 };
 
-const ROYAL_SOLUTIONS_AR = {
-    ECONOMY: [
-        "الحل: يجب أن نستثمر في البنية التحتية طويلة الأمد، وليس المضاربة قصيرة الأجل. الاستقرار يولد الرخاء.",
-        "المرسوم: ركزوا الموارد على التعليم والصناعة المحلية. المملكة المكتفية ذاتياً هي مملكة غنية.",
-        "نصيحة: نوعوا المحفظة الوطنية. لا تقطعوا الغابة من أجل حصاد سريع؛ ازرعوا بذوراً جديدة.",
-        "الحل: قللوا من القيود الروتينية للتجار الصغار. هم شريان الحياة للسوق.",
-        "المرسوم: اضمنوا أجوراً عادلة. الشعب الذي لا يستطيع شراء الخبز لا يستطيع شراء بضائعكم."
-    ],
-    CONFLICT: [
-        "الحل: الدبلوماسية أرخص من الذخيرة. يجب أن نفتح قنوات للحوار فوراً.",
-        "المرسوم: عالجوا السبب الجذري - عادة ندرة الموارد أو عدم الاحترام. أرسلوا مبعوثين، لا جيوشاً.",
-        "نصيحة: القوة الحقيقية تظهر في ضبط النفس. الرحمة تنتصر حيث تفشل السيوف.",
-        "الحل: أنشئوا منطقة محايدة وادعوا الوسطاء. يجب ابتلاع الكبرياء لإنقاذ الأرواح.",
-        "المرسوم: احموا الأبرياء أولاً. القادة الذين يختبئون خلف المدنيين سيواجهون العدالة الملكية."
-    ],
-    CLIMATE: [
-        "الحل: لدينا حديقة واحدة فقط. يجب أن ننتقل إلى الطاقة المتجددة بسرعة الحصان الجامح.",
-        "المرسوم: إعادة التشجير إلزامية. مقابل كل شجرة تُقطع، تُزرع شجرتان. الطبيعة هي مالك الأرض.",
-        "نصيحة: الابتكار هو المفتاح. قدموا منحاً ملكية لأولئك الذين يطورون تقنيات نظيفة.",
-        "الحل: قللوا من النفايات. استخدموا الزجاج وليس البلاستيك. المحيطات ليست مكب نفاياتنا.",
-        "المرسوم: احترموا المواسم. نوا مع البيئة، وليس ضدها."
-    ],
-    TECH: [
-        "الحل: يجب أن تخدم التكنولوجيا البشرية، لا أن تستعبدها. طبقوا إرشادات أخلاقية لجميع الخوارزميات.",
-        "المرسوم: ركزوا على محو الأمية الرقمية. يجب أن يفهم كل فرد الأدوات التي يستخدمها.",
-        "نصيحة: لا تخافوا من الآلة، بل أتقنوها. استخدموا الأتمتة لتحرير البشر للمساعي الإبداعية.",
-        "الحل: خصوصية البيانات حق من حقوق الإنسان. احموا الحدود الرقمية لمواطنيكم.",
-        "المرسوم: استثمروا في استكشاف الفضاء. مصيرنا يكمن بين النجوم، لكن أقدامنا يجب أن تكون راسخة في الأخلاق."
-    ],
-    POLITICS: [
-        "الحل: القائد يأكل أخيراً. الشفافية في الحكم ستعيد الثقة.",
-        "المرسوم: استمعوا إلى رأي الأقلية. الأغلبية صوتها عالٍ، لكنها ليست دائماً على حق.",
-        "نصيحة: التسوية هي فن القيادة. الشجرة الصلبة تنكسر في العاصفة؛ والصفصاف ينحني.",
-        "الحل: مكنوا المجالس المحلية. القرارات يجب أن يتخذها من يتأثرون بها.",
-        "المرسوم: العدالة يجب أن تكون عمياء. القانون يسري على الأمير كما يسري على الفقير."
-    ],
-    DEFAULT: [
-        "الحل: الصبر والمنظور. لا تتصرفوا في عجلة من أمركم؛ خططوا للقرن القادم.",
-        "المرسوم: الوحدة هي قوتنا. يجب أن نجد أرضية مشتركة بدلاً من التركيز على الانقسام.",
-        "نصيحة: التعليم والفهم هما علاج الخوف. مولوا المكتبات.",
-        "الحل: اللطف لا يكلف شيئاً لكنه يشتري الولاء. عاملوا جيرانكم باحترام.",
-        "المرسوم: ركزوا على ما يمكنكم السيطرة عليه. حسنوا منزلكم، وسيتحسن العالم معه."
-    ]
-};
+const DEFAULT_ADVICE_EN = [
+    (s) => `Regarding '${s}': We must approach this with caution and wisdom. Hasty reactions lead to regret.`,
+    (s) => `The situation with '${s}' is complex. Let us not seek simple answers to difficult questions.`,
+    (s) => `In matters of '${s}', transparency is key. The truth must be brought to light.`,
+    (s) => `We must monitor '${s}' closely. It has the potential to reshape our world.`
+];
 
-// Original Council Data (Simplified for brevity, assuming standard imports)
-const COUNCIL_PERSONAS = [
-    {
-        id: "machiavelli",
-        name_en: "Niccolò Machiavelli", name_ar: "نيكولو مكيافيلي",
-        advice_en: ["Focus on the result.", "Power is the only currency."],
-        advice_ar: ["ركز على النتيجة.", "القوة هي العملة الوحيدة."]
-    },
-    // ... (Keeping simplified here, full data persists in memory normally)
+const DEFAULT_ADVICE_AR = [
+    (s) => `بخصوص '${s}': يجب أن نتعامل مع هذا بحذر وحكمة. ردود الفعل المتسرعة تؤدي إلى الندم.`,
+    (s) => `الوضع مع '${s}' معقد. دعونا لا نبحث عن إجابات بسيطة لأسئلة صعبة.`,
+    (s) => `في مسائل '${s}'، الشفافية هي المفتاح. يجب كشف الحقيقة.`,
+    (s) => `يجب أن نراقب '${s}' عن كثب. لديه القدرة على إعادة تشكيل عالمنا.`
 ];
 
 
-function generateBeneficialDecree(text, lang) {
-    const lowerText = text.toLowerCase();
-    const solutions = lang === 'ar' ? ROYAL_SOLUTIONS_AR : ROYAL_SOLUTIONS_EN;
+function generateContextualDecree(title, lang) {
+    const lowerTitle = title.toLowerCase();
+    const templates = lang === 'ar' ? TEMPLATES_AR : TEMPLATES_EN;
+    const defaults = lang === 'ar' ? DEFAULT_ADVICE_AR : DEFAULT_ADVICE_EN;
 
-    // Check keywords
-    for (const [topic, keywords] of Object.entries(TOPIC_KEYWORDS)) {
-        if (keywords.some(k => lowerText.includes(k))) {
-            const options = solutions[topic];
-            return options[Math.floor(Math.random() * options.length)];
+    // 1. Identify Subject (Simple Extraction)
+    // Try to find a known keyword match first
+    let matchedKeyword = null;
+    for (const key of Object.keys(templates)) {
+        if (lowerTitle.includes(key)) {
+            matchedKeyword = key;
+            break;
         }
     }
 
-    // Default
-    return solutions.DEFAULT[Math.floor(Math.random() * solutions.DEFAULT.length)];
+    // Extract a "display subject" for the template
+    // If no keyword match, try to grab the first capitalized word or proper noun roughly
+    let displaySubject = "this matter";
+    if (matchedKeyword) {
+        displaySubject = matchedKeyword; // Use the specific keyword logic
+        return templates[matchedKeyword](displaySubject);
+    } else {
+        // Fallback Extraction: Grab the first 3 words of the title as the subject
+        const words = title.split(' ');
+        displaySubject = words.slice(0, 3).join(' ') + '...';
+
+        // Use a generic template but inject the subject
+        return defaults[Math.floor(Math.random() * defaults.length)](displaySubject);
+    }
 }
 
 
@@ -191,24 +175,29 @@ app.get('/api/news', async (req, res) => {
     try {
         const lang = req.query.lang || 'en';
         const feeds = lang === 'ar' ? FEEDS_AR : FEEDS_EN;
-        // No more buckets, using Expert System
 
         const randomFeedUrl = feeds[Math.floor(Math.random() * feeds.length)];
         const feed = await parser.parseURL(randomFeedUrl);
         const rawItems = feed.items.slice(0, 8);
 
-        // Mock Council for now (Full array is large, usually imported)
-        // In real update I'd keep the full array from previous steps
+        // Mock Council 
         const fullCouncilData = [
-            { id: "machiavelli", name: "Machiavelli", all_advice: ["Power is key."] },
-            { id: "suntzu", name: "Sun Tzu", all_advice: ["Win without fighting."] }
+            { id: "machiavelli", name_en: "Machiavelli", name_ar: "مكيافيلي", all_advice_en: ["Seize the opportunity.", "Chaos is a ladder."], all_advice_ar: ["اغتنم الفرصة.", "الفوضى هي سلم."] },
+            { id: "plato", name_en: "Plato", name_ar: "أفلاطون", all_advice_en: ["The unexamined life is not worth living.", "Truth is beauty."], all_advice_ar: ["الحياة غير المختبرة لا تستحق العيش.", "الحقيقة هي الجمال."] }
         ];
 
         const processedNews = rawItems.map((item) => {
-            const combinedText = item.title + ' ' + (item.contentSnippet || '');
+            const combinedText = item.title; // Focus on title for keyword matching
 
-            // Generate BENEFICIAL decree based on topic
-            const royalComment = generateBeneficialDecree(combinedText, lang);
+            // Generate CONTEXTUAL decree
+            const royalComment = generateContextualDecree(combinedText, lang);
+
+            // Format Council for lang
+            const rCouncil = fullCouncilData.map(g => ({
+                id: g.id,
+                name: lang === 'ar' ? g.name_ar : g.name_en,
+                all_advice: lang === 'ar' ? g.all_advice_ar : g.all_advice_en
+            }));
 
             return {
                 title: item.title,
@@ -216,7 +205,7 @@ app.get('/api/news', async (req, res) => {
                 link: item.link,
                 timestamp: item.pubDate,
                 royalComment: royalComment,
-                councilData: fullCouncilData
+                councilData: rCouncil
             };
         });
 
